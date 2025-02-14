@@ -1,0 +1,374 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Share2, Save, Download, RefreshCcw } from 'lucide-react';
+
+const QUESTIONS = [
+  {
+    text: "What Is Your Gender?",
+    options: ["Male", "Female", "Other"],
+    weight: 1
+  },
+  {
+    text: "Select your age group:",
+    options: ["Under 18", "18-25", "25-40", "Above 40"],
+    weight: 2
+  },
+  {
+    text: "Do you have any skin conditions?",
+    options: ["Rosacea", "Eczema", "Psoriasis", "None"],
+    weight: 3
+  },
+  {
+    text: "What is your skin type?",
+    options: ["Normal", "Oily", "Dry", "Combination", "Sensitive"],
+    weight: 3
+  },
+  {
+    text: "What are your main skin concerns?",
+    options: ["Acne", "Dryness", "Aging", "Sensitivity", "Large Pores", "Hyperpigmentation", "Fine Lines", "Dullness"],
+    multiple: true,
+    weight: 3
+  },
+  {
+    text: "How often do you currently cleanse your face?",
+    options: ["Once a day", "Twice a day", "More than twice a day", "Occasionally", "Never"],
+    weight: 2
+  },
+  {
+    text: "How often do you exfoliate?",
+    options: ["Daily", "2-3 times a week", "Once a week", "Rarely", "Never"],
+    weight: 2
+  },
+  {
+    text: "Do you use sunscreen daily?",
+    options: ["Yes, always", "Sometimes", "Only at beach/pool", "Never"],
+    weight: 3
+  },
+  {
+    text: "What's your typical exposure to sun?",
+    options: ["Minimal (indoor most days)", "Moderate (1-3 hours outside)", "High (outdoor activity/work)", "Varies significantly"],
+    weight: 2
+  },
+  {
+    text: "What's your budget for skincare products?",
+    options: ["Budget-friendly ($)", "Mid-range ($$)", "Premium ($$$)", "Luxury ($$$$)"],
+    weight: 1
+  }
+];
+
+const PRODUCTS = [
+  {
+    name: "Gentle Cleanser",
+    desc: "A mild face wash suitable for all skin types.",
+    skinType: ["Normal", "Sensitive", "Dry", "Combination"],
+    concerns: ["Sensitivity", "Dryness"],
+    frequency: ["Once a day", "Twice a day"],
+    price: "$$",
+    image: "/api/placeholder/120/120",
+    rating: 4.5,
+    ingredients: ["Glycerin", "Ceramides", "Hyaluronic Acid"],
+    bestFor: ["Sensitive skin", "Daily use", "Makeup removal"]
+  },
+  {
+    name: "Oil Control Cleanser",
+    desc: "Deep cleansing foam for oily and acne-prone skin.",
+    skinType: ["Oily", "Combination"],
+    concerns: ["Acne", "Large Pores"],
+    frequency: ["Twice a day", "More than twice a day"],
+    price: "$$",
+    image: "/api/placeholder/120/120",
+    rating: 4.3,
+    ingredients: ["Salicylic Acid", "Tea Tree Oil", "Niacinamide"],
+    bestFor: ["Oily skin", "Acne control", "Deep cleansing"]
+  },
+  {
+    name: "Advanced Anti-Aging Serum",
+    desc: "Premium serum targeting fine lines and wrinkles.",
+    skinType: ["All"],
+    concerns: ["Aging", "Fine Lines", "Dullness"],
+    ageGroup: ["25-40", "Above 40"],
+    price: "$$$",
+    image: "/api/placeholder/120/120",
+    rating: 4.8,
+    ingredients: ["Retinol", "Peptides", "Vitamin C"],
+    bestFor: ["Anti-aging", "Skin firmness", "Radiance"]
+  },
+  {
+    name: "Hydrating Moisturizer",
+    desc: "Rich moisturizer for intense hydration.",
+    skinType: ["Dry", "Normal", "Sensitive"],
+    concerns: ["Dryness", "Sensitivity"],
+    price: "$$",
+    image: "/api/placeholder/120/120",
+    rating: 4.6,
+    ingredients: ["Hyaluronic Acid", "Ceramides", "Squalane"],
+    bestFor: ["Dry skin", "Winter care", "Night routine"]
+  },
+  {
+    name: "Broad Spectrum Sunscreen SPF 50",
+    desc: "Lightweight, non-greasy sun protection.",
+    skinType: ["All"],
+    concerns: ["Aging", "Hyperpigmentation"],
+    sunExposure: ["Moderate", "High"],
+    price: "$$",
+    image: "/api/placeholder/120/120",
+    rating: 4.7,
+    ingredients: ["Zinc Oxide", "Titanium Dioxide", "Vitamin E"],
+    bestFor: ["Daily protection", "Outdoor activities", "Anti-aging"]
+  }
+];
+
+const SkincareQuiz = () => {
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState(Array(QUESTIONS.length).fill(null));
+  const [showResults, setShowResults] = useState(false);
+  const [savedResults, setSavedResults] = useState(null);
+
+  useEffect(() => {
+    // Load saved results from localStorage if they exist
+    const saved = localStorage.getItem('skincareQuizResults');
+    if (saved) {
+      setSavedResults(JSON.parse(saved));
+    }
+  }, []);
+
+  const handleAnswer = (option) => {
+    const question = QUESTIONS[currentQuestion];
+    let newAnswers = [...answers];
+    
+    if (question.multiple) {
+      if (!newAnswers[currentQuestion]) {
+        newAnswers[currentQuestion] = [];
+      }
+      const index = newAnswers[currentQuestion].indexOf(option);
+      if (index === -1) {
+        newAnswers[currentQuestion] = [...newAnswers[currentQuestion], option];
+      } else {
+        newAnswers[currentQuestion] = newAnswers[currentQuestion].filter(item => item !== option);
+      }
+    } else {
+      newAnswers[currentQuestion] = option;
+      if (currentQuestion < QUESTIONS.length - 1) {
+        setTimeout(() => setCurrentQuestion(currentQuestion + 1), 300);
+      } else {
+        setTimeout(() => setShowResults(true), 300);
+      }
+    }
+    
+    setAnswers(newAnswers);
+  };
+
+  const calculateProductScore = (product, userAnswers) => {
+    let score = 0;
+    const skinType = userAnswers[3];
+    const concerns = userAnswers[4] || [];
+    const budget = userAnswers[9];
+    const age = userAnswers[1];
+    const sunExposure = userAnswers[8];
+
+    // Weight factors
+    if (product.skinType.includes(skinType) || product.skinType.includes("All")) {
+      score += 30;
+    }
+
+    concerns.forEach(concern => {
+      if (product.concerns.includes(concern)) {
+        score += 20;
+      }
+    });
+
+    // Budget matching
+    const budgetMap = { "$": "Budget-friendly", "$$": "Mid-range", "$$$": "Premium", "$$$$": "Luxury" };
+    if (budgetMap[product.price] === budget) {
+      score += 15;
+    }
+
+    // Age-specific products
+    if (product.ageGroup && product.ageGroup.includes(age)) {
+      score += 10;
+    }
+
+    // Sun exposure matching for sunscreen
+    if (product.sunExposure && product.sunExposure.includes(sunExposure)) {
+      score += 10;
+    }
+
+    return score;
+  };
+
+  const getRecommendedProducts = () => {
+    const products = PRODUCTS.map(product => ({
+      ...product,
+      score: calculateProductScore(product, answers)
+    }));
+
+    return products
+      .filter(product => product.score > 30) // Only recommend products with decent match
+      .sort((a, b) => b.score - a.score);
+  };
+
+  const saveResults = () => {
+    const results = {
+      answers,
+      recommendations: getRecommendedProducts(),
+      date: new Date().toISOString()
+    };
+    localStorage.setItem('skincareQuizResults', JSON.stringify(results));
+    setSavedResults(results);
+  };
+
+  const shareResults = () => {
+    const recommendations = getRecommendedProducts()
+      .map(p => p.name)
+      .join(', ');
+    
+    const text = `Check out my personalized skincare recommendations: ${recommendations}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'My Skincare Recommendations',
+        text: text,
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(text);
+      alert('Recommendations copied to clipboard!');
+    }
+  };
+
+  const resetQuiz = () => {
+    setCurrentQuestion(0);
+    setAnswers(Array(QUESTIONS.length).fill(null));
+    setShowResults(false);
+  };
+
+  const progress = ((currentQuestion + 1) / QUESTIONS.length) * 100;
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-center text-2xl font-semibold">
+          Find Your Perfect Skincare Routine
+        </CardTitle>
+        <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!showResults ? (
+          <div className="space-y-6">
+            <h2 className="text-xl font-medium text-gray-800">
+              {QUESTIONS[currentQuestion].text}
+            </h2>
+            <div className="grid gap-4">
+              {QUESTIONS[currentQuestion].options.map((option) => (
+                <button
+                  key={option}
+                  onClick={() => handleAnswer(option)}
+                  className={`p-4 text-left rounded-lg border-2 transition-all duration-200
+                    ${answers[currentQuestion]?.includes(option) 
+                      ? 'border-blue-500 bg-blue-50 text-blue-800'
+                      : 'border-gray-200 hover:border-blue-500 hover:bg-gray-50'
+                    }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            {QUESTIONS[currentQuestion].multiple && (
+              <button
+                onClick={() => setCurrentQuestion(currentQuestion + 1)}
+                disabled={!answers[currentQuestion]?.length}
+                className="w-full py-4 px-6 mt-6 bg-gradient-to-r from-blue-500 to-purple-500
+                  text-white rounded-lg font-semibold transition-all duration-200
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  hover:shadow-lg hover:-translate-y-1"
+              >
+                Next
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Your Recommended Products
+              </h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={saveResults}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                  title="Save Results"
+                >
+                  <Save className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={shareResults}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                  title="Share Results"
+                >
+                  <Share2 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={resetQuiz}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                  title="Retake Quiz"
+                >
+                  <RefreshCcw className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="grid gap-6">
+              {getRecommendedProducts().map((product) => (
+                <div key={product.name} className="flex gap-6 p-4 rounded-lg border border-gray-200 hover:shadow-lg transition-all duration-200">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-24 h-24 rounded-lg object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {product.name}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {product.price}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 mt-1">
+                      {product.desc}
+                    </p>
+                    <div className="mt-2 text-sm text-gray-500">
+                      <strong>Best For:</strong> {product.bestFor.join(', ')}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-500">
+                      <strong>Key Ingredients:</strong> {product.ingredients.join(', ')}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {savedResults && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-medium text-gray-700">Previous Results</h3>
+                <p className="text-sm text-gray-500">
+                  Saved on: {new Date(savedResults.date).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+            <button className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-purple-500
+              text-white rounded-lg font-semibold transition-all duration-200
+              hover:shadow-lg hover:-translate-y-1">
+              Shop Now
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
+export default SkincareQuiz;
